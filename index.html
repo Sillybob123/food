@@ -13,8 +13,29 @@
 
   <link rel="stylesheet" href="styles.css" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23c0562f'/><text x='50' y='70' font-family='Georgia,serif' font-size='52' font-weight='700' fill='white' text-anchor='middle'>FR</text></svg>" />
+  <!-- Critical: keep content hidden until unlocked, even before styles.css loads -->
+  <style>body.locked #site{display:none!important}body.locked{overflow:hidden}#lockScreen{display:none}body.locked #lockScreen{display:flex}</style>
 </head>
-<body>
+<body class="locked">
+  <!-- ===================== Passcode lock screen ===================== -->
+  <div id="lockScreen" class="lock-screen" role="dialog" aria-modal="true" aria-label="Enter passcode to continue">
+    <div class="lock-card">
+      <div class="lock-mark">FR</div>
+      <h1>Family Recipes</h1>
+      <p class="lock-sub">Enter the passcode to open the cookbook.</p>
+      <form id="lockForm" autocomplete="off">
+        <input id="lockInput" type="password" inputmode="numeric" pattern="[0-9]*"
+               maxlength="12" placeholder="• • • •" aria-label="Passcode"
+               autocomplete="off" />
+        <button type="submit" class="btn btn-primary btn-block" id="lockBtn">Unlock</button>
+      </form>
+      <p id="lockError" class="lock-error" role="alert" hidden></p>
+    </div>
+    <div class="lock-foot">A private family cookbook 🔒</div>
+  </div>
+
+  <!-- ===================== Everything below is hidden until unlocked ===================== -->
+  <div id="site" aria-hidden="true">
   <!-- ===================== Header ===================== -->
   <header class="site-header">
     <div class="wrap">
@@ -49,10 +70,10 @@
   </footer>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div><!-- /#site -->
 
-  <script src="firebase-config.js"></script>
-  <script src="data.js"></script>
-  <script src="app.js"></script>
+  <!-- Gate runs FIRST and only loads the rest of the app after a correct passcode -->
+  <script src="gate.js"></script>
 </body>
 </html>
 2

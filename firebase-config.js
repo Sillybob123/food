@@ -30,7 +30,6 @@ const FIREBASE_CONFIG = {
   measurementId:     "G-41ZV18PCPC",
 };
 
-// A simple shared passcode that unlocks "Add / Edit". Everyone can VIEW;
-// only people who type this once (per device) can save recipes.
-// Change it to whatever you and Mom agree on.
-const FAMILY_PASSCODE = "family";
+// Shared passcode for "Add / Edit". The site-wide access gate (gate.js) uses
+// the SAME passcode, so unlocking the site also unlocks saving.
+const FAMILY_PASSCODE = "1948";

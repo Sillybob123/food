@@ -79,6 +79,65 @@ html[data-theme="dark"] {
   --shadow-lg: 0 18px 50px rgba(0,0,0,.5);
 }
 
+/* ============================ Passcode gate ============================ */
+/* Hide all site content until unlocked (works even before gate.js runs) */
+body.locked #site { display: none !important; }
+body.locked { overflow: hidden; }
+#lockScreen { display: none; }
+body.locked #lockScreen { display: flex; }
+
+.lock-screen {
+  position: fixed; inset: 0; z-index: 5000;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 24px; padding: 24px;
+  background:
+    radial-gradient(1200px 600px at 50% -10%, var(--gold-t), transparent 60%),
+    linear-gradient(160deg, var(--paper) 0%, var(--paper-2) 100%);
+}
+html[data-theme="dark"] .lock-screen {
+  background:
+    radial-gradient(1200px 600px at 50% -10%, #2a2118, transparent 60%),
+    linear-gradient(160deg, #1c1814 0%, #221c16 100%);
+}
+.lock-card {
+  width: 100%; max-width: 380px; text-align: center;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: var(--r-lg); padding: 40px 32px;
+  box-shadow: 0 30px 80px rgba(43,33,24,.18);
+}
+.lock-mark {
+  width: 64px; height: 64px; margin: 0 auto 20px; border-radius: 18px;
+  background: linear-gradient(145deg, var(--terracotta), var(--gold));
+  display: grid; place-items: center; color: #fff;
+  font-family: var(--font-display); font-weight: 600; font-size: 27px; letter-spacing: -.02em;
+  box-shadow: 0 10px 24px rgba(192,86,47,.35);
+}
+.lock-card h1 { font-family: var(--font-display); font-size: 30px; font-weight: 600; margin: 0 0 6px; letter-spacing: -.02em; color: var(--ink); }
+.lock-sub { color: var(--ink-soft); font-size: 15.5px; margin: 0 0 26px; }
+#lockForm { display: flex; flex-direction: column; gap: 12px; }
+#lockInput {
+  width: 100%; height: 56px; text-align: center;
+  font-size: 26px; letter-spacing: 8px; font-weight: 600;
+  border: 1px solid var(--line-strong); border-radius: var(--r-md);
+  background: var(--paper-2); color: var(--ink);
+  transition: border-color .16s, box-shadow .16s;
+}
+#lockInput::placeholder { letter-spacing: 6px; color: var(--ink-faint); }
+#lockInput:focus { outline: none; border-color: var(--terracotta); box-shadow: 0 0 0 4px var(--terracotta-t); }
+#lockBtn { height: 52px; font-size: 16px; }
+.lock-error { color: var(--terracotta); font-size: 14px; font-weight: 600; margin: 14px 0 0; }
+.lock-foot { color: var(--ink-faint); font-size: 13px; }
+
+.lock-card.shake { animation: lock-shake .4s cubic-bezier(.36,.07,.19,.97) both; }
+@keyframes lock-shake {
+  10%,90% { transform: translateX(-2px); }
+  20%,80% { transform: translateX(4px); }
+  30%,50%,70% { transform: translateX(-9px); }
+  40%,60% { transform: translateX(9px); }
+}
+.lock-screen.opening { animation: lock-out .4s var(--ease) forwards; }
+@keyframes lock-out { to { opacity: 0; transform: scale(1.03); visibility: hidden; } }
+
 /* ============================ Base ============================ */
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }

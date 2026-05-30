@@ -43,6 +43,25 @@ anywhere, including **free GitHub Pages**.
 | `data.js`    | The starter recipes (used in local mode, and as a fallback) |
 | `firebase-config.js` | **Paste your Firebase web config here** to turn on live cloud saving (optional) |
 
+## 🔒 Passcode lock
+
+The whole site is behind a passcode (**1948**). Visitors see only a lock screen
+until they enter it; the recipe content and scripts aren't even loaded until then.
+Once entered, the device stays unlocked. The same passcode also authorises adding
+recipes, so you only type it once.
+
+- The passcode is stored in `gate.js` **only as a SHA-256 hash** (not plain text).
+- To change it: in any browser console run
+  `crypto.subtle.digest('SHA-256', new TextEncoder().encode('NEWCODE')).then(b=>console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))`
+  then paste the result into `PASSCODE_HASH` in `gate.js`, and set `FAMILY_PASSCODE`
+  in `firebase-config.js` to the same new code.
+
+> ⚠️ **What this does and doesn't do.** This is a static site, so the lock is a
+> strong *privacy* gate for anyone who finds the link — but it's client-side, so a
+> determined technical person could bypass the UI. For true protection of the recipe
+> *data*, enable **Firebase Authentication** and require `request.auth != null` in the
+> Firestore rules (see below). For a family cookbook, the passcode is usually plenty.
+
 ## 🔥 Two ways to run
 
 **Local mode (default, zero setup)** — recipes live in `data.js`, committed to GitHub.
