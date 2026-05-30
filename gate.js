@@ -40,16 +40,11 @@
   const card = screen.querySelector(".lock-card");
 
   let tries = 0;
+  let appLoaded = false;
 
   async function sha256Hex(str) {
     const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
     return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
-  }
-
-  // --- already unlocked on this device? open immediately ---
-  if (localStorage.getItem(UNLOCK_KEY) === "1") {
-    unlock(true);
-    return;
   }
 
   // restore an in-progress lockout
@@ -118,14 +113,13 @@
     });
   }
 
-  let appLoaded = false;
   async function unlock(instant) {
     body.classList.remove("locked");
     const site = document.getElementById("site");
     if (site) site.setAttribute("aria-hidden", "false");
     if (screen) {
       if (instant) screen.remove();
-      else { screen.classList.add("opening"); setTimeout(() => screen.remove(), 450); }
+      else { screen.classList.add("opening"); setTimeout(() => { if (screen.parentNode) screen.remove(); }, 450); }
     }
     if (!appLoaded) {
       appLoaded = true;
@@ -140,7 +134,7 @@
     }
   }
 
-  // wire up the form
+  // wire up the lock form (only matters when still locked)
   if (form) {
     form.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -149,6 +143,12 @@
       attempt(v);
     });
     setTimeout(() => input && input.focus(), 100);
-    tick(); // in case a cooldown is active from a previous session
+  }
+
+  /* --- entry point: all declarations above are now initialized --- */
+  if (localStorage.getItem(UNLOCK_KEY) === "1") {
+    unlock(true);          // already unlocked on this device → open straight away
+  } else {
+    tick();                // show lock screen; restore any active cooldown
   }
 })();
