@@ -29,6 +29,12 @@
   }
   const allIngredients = (r) => getSections(r).flatMap((s) => s.ingredients);
 
+  // A step is either "text" or { text, tip }. Normalize to { text, tip }.
+  const stepObj = (s) => (s && typeof s === "object")
+    ? { text: String(s.text || ""), tip: s.tip ? String(s.tip) : "" }
+    : { text: String(s || ""), tip: "" };
+  const stepText = (s) => stepObj(s).text;
+
   const author = (id) => AUTHORS[id] || { name: id || "Unknown", color: "#9a8d7d" };
   const category = (id) => CATEGORIES.find((c) => c.id === id) || { label: id || "Other", color: "#9a8d7d" };
   const initials = (name) => name.trim().slice(0, 1).toUpperCase();
@@ -342,7 +348,13 @@
             ${sections.map((sec, si) => `
               <section class="phase">
                 ${sec.name ? `<div class="phase-head"><span class="phase-num">${si + 1}</span><h2 class="phase-title">${esc(sec.name)}</h2></div>` : `<h2 class="method-title">Method</h2>`}
-                ${sec.steps.length ? `<ol class="steps">${sec.steps.map((s) => `<li><div class="step-text">${md(s)}</div></li>`).join("")}</ol>` : ""}
+                ${sec.steps.length ? `<ol class="steps">${sec.steps.map((s) => {
+                  const st = stepObj(s);
+                  return `<li><div class="step-text">${md(st.text)}${st.tip ? `
+                    <div class="step-tip"><span class="step-tip-label">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 9.2 8.6 2 9.2l5.5 4.7L5.8 21 12 17.3 18.2 21l-1.7-7.1L22 9.2l-7.2-.6L12 2Z"/></svg>
+                      Pro tip</span><p>${md(st.tip)}</p></div>` : ""}</div></li>`;
+                }).join("")}</ol>` : ""}
               </section>`).join("")}
 
             ${r.tips && r.tips.length ? `
@@ -477,7 +489,11 @@
       if (sec.steps.length) {
         L.push("");
         L.push("METHOD");
-        sec.steps.forEach((s, i) => L.push(`  ${i + 1}. ${s.replace(/\*/g, "")}`));
+        sec.steps.forEach((s, i) => {
+          const st = stepObj(s);
+          L.push(`  ${i + 1}. ${st.text.replace(/\*/g, "")}`);
+          if (st.tip) L.push(`       ★ Pro tip: ${st.tip.replace(/\*/g, "")}`);
+        });
       }
     });
     if (r.tips && r.tips.length) {
@@ -507,7 +523,10 @@
         const amt = i.amount == null ? "" : `<b>${formatMeasure(i.amount, i.unit)}${i.unit ? " " + esc(i.unit) : ""}</b> `;
         return `<li>${amt}${esc(i.item)}</li>`;
       }).join("")}</ul>` : ""}
-      ${sec.steps.length ? `<h3>Method</h3><ol>${sec.steps.map((s) => `<li>${md(s)}</li>`).join("")}</ol>` : ""}
+      ${sec.steps.length ? `<h3>Method</h3><ol>${sec.steps.map((s) => {
+        const st = stepObj(s);
+        return `<li>${md(st.text)}${st.tip ? `<div class="steptip"><b>Pro tip:</b> ${md(st.tip)}</div>` : ""}</li>`;
+      }).join("")}</ol>` : ""}
     `).join("");
     const tipsHTML = (r.tips && r.tips.length) ? `<h2 class="tips">Michelin Pro Tips</h2><ul class="tips">${r.tips.map((t) => `<li>${md(t)}</li>`).join("")}</ul>` : "";
     const meta = [r.prepMin ? `Prep ${r.prepMin} min` : "", r.cookMin ? `Cook ${r.cookMin} min` : "", `Serves ${r.servings || "—"}`, `By ${author(r.author).name}`].filter(Boolean).join("  ·  ");
@@ -528,6 +547,8 @@
         li { margin: 4px 0; }
         ul li b { color: #c0562f; }
         h2.tips { color: #b88a3e; } ul.tips li { margin: 8px 0; }
+        .steptip { margin: 6px 0 2px; padding: 8px 12px; background: #f5ebd6; border-left: 3px solid #b88a3e; border-radius: 6px; font-size: 14px; }
+        .steptip b { color: #b88a3e; }
         .foot { margin-top: 36px; color: #9a8d7d; font-size: 12px; text-align: center; }
         @media print { body { margin: 0 auto; } }
       </style></head><body>
@@ -665,15 +686,25 @@
       cookMin: parseInt(o.cookMin) || 0,
       tips: Array.isArray(o.tips) ? o.tips.map((t) => String(t).trim()).filter(Boolean) : [],
     };
+    // step may be a string OR { text, tip } — keep the tip when present
+    const tidyStep = (x) => {
+      if (x && typeof x === "object") {
+        const text = String(x.text || "").trim();
+        const tip = String(x.tip || "").trim();
+        return text ? (tip ? { text, tip } : text) : null;
+      }
+      const t = String(x || "").trim();
+      return t || null;
+    };
     if (Array.isArray(o.sections) && o.sections.length) {
       r.sections = o.sections.map((s) => ({
         name: String(s.name || "").trim(),
         ingredients: (s.ingredients || []).map(tidyIng).filter((i) => i.item),
-        steps: (s.steps || []).map((x) => String(x).trim()).filter(Boolean),
+        steps: (s.steps || []).map(tidyStep).filter(Boolean),
       }));
     } else {
       r.ingredients = (o.ingredients || []).map(tidyIng).filter((i) => i.item);
-      r.steps = (o.steps || []).map((x) => String(x).trim()).filter(Boolean);
+      r.steps = (o.steps || []).map(tidyStep).filter(Boolean);
     }
     return r;
   }
@@ -907,7 +938,7 @@ Pro Tip: don't overmix or it gets tough.
         ${s.name ? `<h5>${esc(s.name)}</h5>` : ""}
         ${s.ingredients.length ? `<ul class="preview-ings">${s.ingredients.map((i) =>
           `<li><b>${i.amount == null ? "" : formatMeasure(i.amount, i.unit) + (i.unit ? " " + esc(i.unit) : "")}</b> ${esc(i.item)}</li>`).join("")}</ul>` : ""}
-        ${s.steps.length ? `<ol class="preview-steps">${s.steps.map((st) => `<li>${esc(st)}</li>`).join("")}</ol>` : ""}
+        ${s.steps.length ? `<ol class="preview-steps">${s.steps.map((x) => { const st = stepObj(x); return `<li>${esc(st.text)}${st.tip ? ` <em style="color:var(--gold)">— pro tip: ${esc(st.tip)}</em>` : ""}</li>`; }).join("")}</ol>` : ""}
       </div>`).join("");
 
     root.innerHTML = `
@@ -969,6 +1000,13 @@ Pro Tip: don't overmix or it gets tough.
     const q = (s) => '"' + String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
     const num = (n) => (n == null ? "null" : Math.round(n * 1000) / 1000);
     const ingLine = (i, pad) => `${pad}{ amount: ${num(i.amount)}, unit: ${q(i.unit || "")}, item: ${q(i.item)} },`;
+    // a step is a string, or { text, tip } when it carries a per-step pro tip
+    const stepLine = (s, pad) => {
+      const st = stepObj(s);
+      return st.tip
+        ? `${pad}{ text: ${q(st.text)}, tip: ${q(st.tip)} },`
+        : `${pad}${q(st.text)},`;
+    };
     const tips = (r.tips || []).map((t) => `    ${q(t)},`).join("\n");
 
     // sections vs flat
@@ -982,12 +1020,12 @@ Pro Tip: don't overmix or it gets tough.
       body = `    sections: [\n` + secs.map((s) =>
         `      {\n        name: ${q(s.name || "")},\n` +
         `        ingredients: [\n${s.ingredients.map((i) => ingLine(i, "          ")).join("\n")}\n        ],\n` +
-        `        steps: [\n${s.steps.map((st) => `          ${q(st)},`).join("\n")}\n        ],\n      },`
+        `        steps: [\n${s.steps.map((st) => stepLine(st, "          ")).join("\n")}\n        ],\n      },`
       ).join("\n") + `\n    ],`;
     } else {
       const s0 = secs[0] || { ingredients: [], steps: [] };
       body = `    ingredients: [\n${s0.ingredients.map((i) => ingLine(i, "      ")).join("\n")}\n    ],\n` +
-             `    steps: [\n${s0.steps.map((st) => `      ${q(st)},`).join("\n")}\n    ],`;
+             `    steps: [\n${s0.steps.map((st) => stepLine(st, "      ")).join("\n")}\n    ],`;
     }
 
     return `  {
@@ -1028,7 +1066,10 @@ ${tips}
    • Keep prep notes in "item": "garlic, finely minced".
 5. MULTI-PART RECIPES. If the recipe has distinct components (e.g. dough, filling, sauce, or "Phase 1/2/3", "For the…"), output a "sections" array — one object per part, each with its own "name", "ingredients" and "steps". Put each ingredient under the part it belongs to. If it's a single simple recipe, use flat "ingredients" and "steps" instead (no "sections").
 6. STEPS are clear, confident, second-person sentences. One action-stage per step. Bold the most important word or phrase in a step by wrapping it in **double asterisks**.
-7. ADD 4–6 "tips" — genuine Michelin-level pro tips that make THIS specific dish extraordinary: the technique, temperature, timing, resting, seasoning, emulsion, or plating secrets a top chef would know. Make them specific to this recipe (not generic). These are what turn a home recipe into a spectacular one.
+   • A step may be a plain string, OR an object { "text": "...", "tip": "..." }.
+   • IMPORTANT: if a pro tip is about a SPECIFIC step (the right temperature for THAT step, how to know THAT step is done, a technique for THAT exact action), attach it to that step as the "tip" field — so the cook sees exactly how to do that step, right where they need it. Keep the original tip wording from the source if it had one.
+   • Add per-step tips generously wherever a step has a non-obvious technique, doneness cue, timing, or common mistake.
+7. ALSO provide a "tips" array of 4–6 genuine Michelin-level pro tips for the dish OVERALL (big-picture secrets: ingredient quality, make-ahead, seasoning balance, plating). The bottom "tips" list and the per-step "tip" fields are BOTH used — per-step tips live with their step, the overall tips show at the end. Make them specific to this recipe, never generic.
 8. Choose the best "category" from: ${cats}.
 9. Set "author" to ${JSON.stringify(author)} unless the recipe clearly belongs to someone else. (Valid authors: ${authors}.)
 10. Estimate "servings", "prepMin", "cookMin" if the source doesn't state them.
@@ -1049,11 +1090,14 @@ ${tips}
 
   // Use EITHER this flat pair (simple recipe):
   "ingredients": [ { "amount": 200, "unit": "g", "item": "flour" }, { "amount": null, "unit": "", "item": "salt, to taste" } ],
-  "steps": [ "Do the **first** thing.", "Then the next." ],
+  "steps": [
+    "Do the **first** thing.",
+    { "text": "Knead the dough **10 minutes**.", "tip": "It's ready when it springs back slowly and feels like an earlobe — under-kneaded dough tears." }
+  ],
 
   // OR this (multi-part recipe — omit the flat pair above if you use this):
   "sections": [
-    { "name": "The Dough", "ingredients": [ { "amount": 200, "unit": "g", "item": "flour" } ], "steps": [ "Knead **10 minutes**." ] },
+    { "name": "The Dough", "ingredients": [ { "amount": 200, "unit": "g", "item": "flour" } ], "steps": [ { "text": "Rest **45 min**.", "tip": "Resting relaxes the gluten so it rolls thin without snapping back." } ] },
     { "name": "The Sauce", "ingredients": [ { "amount": 400, "unit": "g", "item": "tomatoes" } ], "steps": [ "Simmer gently." ] }
   ],
 
@@ -1327,11 +1371,21 @@ ${source || "(paste your recipe here — replace this line with the full recipe 
       return cur;
     };
 
-    // pull "Pro Tip: …" out of a step's trailing sentence
-    const extractInlineTip = (txt) => {
+    // pull "Pro Tip: …" out of a step's trailing sentence and KEEP it attached
+    // to that step (returns { text, tip }) so the cook sees it right there.
+    const makeStep = (txt) => {
       const m = txt.match(/(.*?)(?:^|\s)(pro ?tip|chef'?s? ?tip|tip|note)\s*[:\-]\s*(.+)$/is);
-      if (m && m[3]) { tips.push(m[3].trim()); return m[1].trim(); }
-      return txt;
+      if (m && m[3]) {
+        const tip = m[3].trim();
+        return { text: m[1].trim(), tip };
+      }
+      return txt.trim();
+    };
+    // push a step (string or {text,tip}) only if it has real content
+    const pushStep = (section, step) => {
+      if (!section) return;
+      if (typeof step === "object") { if (step.text || step.tip) section.steps.push(step); }
+      else if (String(step).trim()) section.steps.push(step);
     };
 
     for (let i = 0; i < lines.length; i++) {
@@ -1377,12 +1431,11 @@ ${source || "(paste your recipe here — replace this line with the full recipe 
         // strip leading bullet then parse
         cur.ingredients.push(parseIngredientLine(l));
       } else if (mode === "step") {
-        let stepTxt = l.replace(/^\d+[\.)]\s*/, "").replace(/^[-•*·]\s*/, "").trim();
-        stepTxt = extractInlineTip(stepTxt);
-        if (stepTxt) cur.steps.push(stepTxt);
+        const raw = l.replace(/^\d+[\.)]\s*/, "").replace(/^[-•*·]\s*/, "").trim();
+        pushStep(cur, makeStep(raw));
       } else {
         // head/unknown — guess by shape
-        if (numbered) { mode = "step"; let t = extractInlineTip(l.replace(/^\d+[\.)]\s*/, "")); if (t) cur.steps.push(t); }
+        if (numbered) { mode = "step"; pushStep(cur, makeStep(l.replace(/^\d+[\.)]\s*/, ""))); }
         else if (bulleted || /^[\d½⅓⅔¼¾]/.test(l)) { mode = "ing"; cur.ingredients.push(parseIngredientLine(l)); }
         // else: treat first stray paragraph as description
         else if (!cur.ingredients.length && !cur.steps.length && !cur.name) {
